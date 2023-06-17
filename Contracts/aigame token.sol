@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// @title AiGame token for Arbdoge Fun Gaming
+// @title GAME token for Battledog Games 
 // https://twitter.com/0xSorcerers | https://github.com/Dark-Viper | https://t.me/Oxsorcerer | https://t.me/battousainakamoto | https://t.me/darcViper
 
 pragma solidity ^0.8.17;
@@ -11,11 +11,12 @@ import "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract AIGame is ERC20, Ownable, ReentrancyGuard {        
+contract GAME is ERC20, Ownable, ReentrancyGuard {        
         constructor(string memory _name, string memory _symbol, address _newGuard) 
             ERC20(_name, _symbol)
         {
             guard = _newGuard;
+        _mint(msg.sender, MAX_SUPPLY); 
         }
     using ABDKMath64x64 for uint256;
     using SafeMath for uint256;
@@ -34,17 +35,6 @@ contract AIGame is ERC20, Ownable, ReentrancyGuard {
     modifier onlyBurner() {
         require(msg.sender == battledog, "Not authorized.");
         _;
-    }
-
-    event mintEvent(uint256 indexed multiplier);
-    function mint(uint256 _multiplier) external onlyOwner {        
-        require(!paused, "Paused Contract");
-        require(_multiplier > 0, "Invalid Multiplier");
-        require(totalSupply() < MAX_SUPPLY, "Max Minted");
-        uint256 multiplier =  _multiplier * (1_000_000 * 10 ** decimals());
-        require(totalSupply() + multiplier < MAX_SUPPLY, "Max Exceeded");
-        _mint(msg.sender, multiplier);  
-        emit mintEvent(multiplier);
     }
 
     event burnEvent(uint256 indexed _amount);
