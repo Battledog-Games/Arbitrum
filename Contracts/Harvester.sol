@@ -10,18 +10,16 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 
 contract Harvester is Ownable, ReentrancyGuard {
-    IERC20 public AIGAMEToken;
+    IERC20 public GAMEToken;
     IERC20 public payToken;
     uint256 public totalRewards = 1;
-    uint256 public totalClaimedRewards; 
+    uint256 public totalClaimedRewards;
     uint256 public startTime;
     uint256 public rewardPerStamp;
     uint256 public numberOfParticipants = 0;
-    uint256 private _startTime;
-    uint256 private _duration;
-    uint256 public Duration = duration();
-    uint256 public timeLock = 3 days;
-    uint256 public TotalAIGAMESent = 1;
+    uint256 public Duration = 604800;
+    uint256 public timeLock = 5;
+    uint256 public TotalGAMESent = 1;
     uint256 public tax = 0;
     uint256 public TaxTotal = 0;
     uint256 private divisor = 100 ether;
@@ -39,21 +37,22 @@ contract Harvester is Ownable, ReentrancyGuard {
 
     struct Claim {
         uint256 eraAtBlock;
-        uint256 AIGAMESent;
+        uint256 GAMESent;
         uint256 rewardsOwed;
     }
     
+    event RewardsUpdated(uint256 totalRewards);
     event RewardAddedByDev(uint256 amount);
     event RewardClaimedByUser(address indexed user, uint256 amount);
-    event AddAIGAME(address indexed user, uint256 amount);
-    event WithdrawAIGAME(address indexed user, uint256 amount);
+    event AddGAME(address indexed user, uint256 amount);
+    event WithdrawGAME(address indexed user, uint256 amount);
     
     constructor(
-        address _AIGAMEToken,
+        address _GAMEToken,
         address _payToken,
         address _newGuard
     ) {
-        AIGAMEToken = IERC20(_AIGAMEToken);
+        GAMEToken = IERC20(_GAMEToken);
         payToken = IERC20(_payToken);
         guard = _newGuard;
         startTime = block.timestamp;
@@ -74,11 +73,11 @@ contract Harvester is Ownable, ReentrancyGuard {
         _;
     }
 
-    function addAIGAME(uint256 _amount) public nonReentrant {
+    function addGAME(uint256 _amount) public nonReentrant {
         require(!paused, "Contract is paused.");
         require(_amount > 0, "Amount must be greater than zero.");
         require(blacklist[msg.sender] == 0, "Address is blacklisted.");
-        require(AIGAMEToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed.");
+        require(GAMEToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed.");
         Claim storage claimData = claimRewards[msg.sender];
         uint256 toll = (_amount * tax)/100;
         uint256 amount = _amount - toll;
@@ -96,36 +95,36 @@ contract Harvester is Ownable, ReentrancyGuard {
         }
     
         claimData.eraAtBlock = block.timestamp;
-        claimData.AIGAMESent += amount;
-        TotalAIGAMESent += amount;
-        updateRewardPerStamp();
-        emit AddAIGAME(msg.sender, _amount);
+        claimData.GAMESent += amount;
+        TotalGAMESent += amount;
+        setRewards();
+        emit AddGAME(msg.sender, _amount);
     }
 
     /**
-    * @dev Allows the user to withdraw their AIGAME tokens
+    * @dev Allows the user to withdraw their GAME tokens
     */
-    function withdrawAIGAME() public nonReentrant onlyAfterTimelock {
+    function withdrawGAME() public nonReentrant onlyAfterTimelock {
         require(!paused, "Contract already paused.");
-        require(balances[msg.sender] > 0, "No AIGAME tokens to withdraw.");        
-        uint256 AIGAMEAmount = balances[msg.sender];
-        require(AIGAMEToken.transfer(msg.sender, AIGAMEAmount), "Failed Transfer");  
+        require(balances[msg.sender] > 0, "No GAME tokens to withdraw.");        
+        uint256 GAMEAmount = balances[msg.sender];
+        require(GAMEToken.transfer(msg.sender, GAMEAmount), "Failed Transfer");  
         
         updateAllClaims();     
-         //Delete all allocations of AIGAME
+         //Delete all allocations of GAME
         balances[msg.sender] = 0;
-        TotalAIGAMESent -= AIGAMEAmount;
+        TotalGAMESent -= GAMEAmount;
         Claim storage claimData = claimRewards[msg.sender];
-        claimData.AIGAMESent = 0;
+        claimData.GAMESent = 0;
 
-        updateRewardPerStamp();
+       setRewards();
 
         if (numberOfParticipants > 0) {
             numberOfParticipants -= 1;
             entryMap[msg.sender] = 0; // reset the user's entry timestamp
         }
         
-        emit WithdrawAIGAME(msg.sender, AIGAMEAmount);
+        emit WithdrawGAME(msg.sender, GAMEAmount);
     }
 
     /**
@@ -134,9 +133,14 @@ contract Harvester is Ownable, ReentrancyGuard {
     */
     function addRewards(uint256 _amount) external onlyOwner {
         payToken.transferFrom(msg.sender, address(this), _amount);
-        totalRewards += _amount;
-        updateRewardPerStamp();
+        setRewards();
         emit RewardAddedByDev(_amount);
+    }
+
+    function setRewards() internal onlyOwner {
+        totalRewards = payToken.balanceOf(address(this));
+        updateRewardPerStamp();
+        emit RewardsUpdated(totalRewards);
     }
 
     function updateAllClaims() internal {
@@ -150,7 +154,7 @@ contract Harvester is Ownable, ReentrancyGuard {
             if (blacklist[participant] == 1) {
                 claimData.rewardsOwed = 0;
             } else {
-                uint256 rewardsAccrued = claimData.rewardsOwed + (rewardPerStamp * period * claimData.AIGAMESent);
+                uint256 rewardsAccrued = claimData.rewardsOwed + (rewardPerStamp * period * claimData.GAMESent);
                 claimData.rewardsOwed = rewardsAccrued;
             }
             claimData.eraAtBlock = currentTime;
@@ -158,7 +162,7 @@ contract Harvester is Ownable, ReentrancyGuard {
     }
 
     function updateRewardPerStamp() internal {
-        rewardPerStamp = (totalRewards * divisor) / (TotalAIGAMESent * Duration);
+        rewardPerStamp = (totalRewards * divisor) / (TotalGAMESent * Duration);
     }
 
     function claim() public nonReentrant onlyClaimant {  
@@ -173,8 +177,7 @@ contract Harvester is Ownable, ReentrancyGuard {
         // Update the total rewards claimed by the user
         Claimants[msg.sender] += rewards;
         totalClaimedRewards += rewards;
-        totalRewards -= rewards;
-        updateRewardPerStamp(); 
+        setRewards();
         UserClaims[msg.sender] = block.timestamp; // record the user's claim timestamp       
         emit RewardClaimedByUser(msg.sender, rewards);
     }
@@ -186,25 +189,17 @@ contract Harvester is Ownable, ReentrancyGuard {
             require(payToken.transfer(msg.sender, amount), "Transfer failed.");
         } else {
             require(amount <= TaxTotal, "Max Exceeded.");
-            require(AIGAMEToken.balanceOf(address(this)) >= TaxTotal, "Not enough Reserves.");
-            require(AIGAMEToken.transfer(msg.sender, amount), "Transfer failed.");
+            require(GAMEToken.balanceOf(address(this)) >= TaxTotal, "Not enough Reserves.");
+            require(GAMEToken.transfer(msg.sender, amount), "Transfer failed.");
             TaxTotal -= amount;
         }
-        totalRewards -= amount;
+        setRewards();
+    }
+
+    function setDuration(uint256 _seconds) external onlyOwner {        
+        updateAllClaims();
+        Duration = _seconds;
         updateRewardPerStamp();
-    }
-
-    function duration() public view returns (uint256) {
-        if (block.timestamp < _startTime + _duration) {
-            return _startTime + _duration - block.timestamp;
-        } else {
-            return 1;
-        }
-    }
-
-    function setDuration(uint256 _seconds) public {
-        _startTime = block.timestamp;
-        _duration = _seconds;
     }
 
     function setTimeLock(uint256 _seconds) external onlyOwner {
@@ -215,8 +210,8 @@ contract Harvester is Ownable, ReentrancyGuard {
         tax = _percent;
     }
 
-    function setAIGAMEToken(address _AIGAMEToken) external onlyOwner {
-        AIGAMEToken = IERC20(_AIGAMEToken);
+    function setGAMEToken(address _GAMEToken) external onlyOwner {
+        GAMEToken = IERC20(_GAMEToken);
     }
 
     function setPayToken(address _payToken) external onlyOwner {
