@@ -137,7 +137,7 @@ contract Harvester is Ownable, ReentrancyGuard {
         emit RewardAddedByDev(_amount);
     }
 
-    function setRewards() internal onlyOwner {
+    function setRewards() internal {
         totalRewards = payToken.balanceOf(address(this));
         updateRewardPerStamp();
         emit RewardsUpdated(totalRewards);
