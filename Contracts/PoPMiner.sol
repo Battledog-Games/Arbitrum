@@ -29,7 +29,7 @@ interface IBattledog {
  * @title Proof of Play Miner contract
  */
 contract ProofOfPlay is Ownable, ReentrancyGuard {
-    IERC20 public aigameToken;
+    IERC20 public GAMEToken;
     uint256 public totalClaimedRewards;
     uint256 public multiplier = 10;
     uint256 public timeLock = 24 hours;
@@ -68,11 +68,11 @@ contract ProofOfPlay is Ownable, ReentrancyGuard {
     event RewardClaimedByMiner (address indexed user, uint256 amount);
     
     constructor(
-        address _aigameToken,
+        address _GAMEToken,
         address _battledogs,
         address _newGuard
     ) {
-        aigameToken = IERC20(_aigameToken);
+        GAMEToken = IERC20(_GAMEToken);
         battledogs = _battledogs;
         guard = _newGuard;
     }
@@ -111,7 +111,7 @@ contract ProofOfPlay is Ownable, ReentrancyGuard {
         return false;
     }
 
-    function mineAigame(uint256 _tokenId) public nonReentrant {
+    function mineGAME(uint256 _tokenId) public nonReentrant {
         //Require Contract isn't paused
         require(!paused, "Paused Contract");
         //Require Token Ownership    
@@ -140,9 +140,9 @@ contract ProofOfPlay is Ownable, ReentrancyGuard {
         uint256 rewards = (activate + level + fights + wins + history) * divisor;
 
         // Check the contract for adequate withdrawal balance
-        require(aigameToken.balanceOf(address(this)) > rewards, "Not Enough Reserves");      
+        require(GAMEToken.balanceOf(address(this)) > rewards, "Not Enough Reserves");      
         // Transfer the rewards amount to the miner
-        require(aigameToken.transfer(msg.sender, rewards), "Failed Transfer.");
+        require(GAMEToken.transfer(msg.sender, rewards), "Failed Transfer.");
         //Register claim
         getCollectors(_tokenId);
         //Register claim timestamp
@@ -198,6 +198,10 @@ contract ProofOfPlay is Ownable, ReentrancyGuard {
 
     function setBattledog (address _battledog) external onlyGuard {
         battledogs = _battledog;
+    }
+
+    function setGametoken (address _gametoken) external onlyGuard {
+        GAMEToken = IERC20(_gametoken);
     }
 
     event Pause();
