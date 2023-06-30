@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: No license
 
-// @title NFT Game by OxSorcerers for Arbdoge Fun Gaming
+// @title NFT Game by OxSorcerers for Battledog Games (ARBITRUM)
 // https://twitter.com/0xSorcerers | https://github.com/Dark-Viper | https://t.me/Oxsorcerer | https://t.me/battousainakamoto | https://t.me/darcViper
 
 pragma solidity ^0.8.17;
@@ -43,8 +43,13 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     address private guard; 
     address public aigame;
     string public Author = "0xSorcerer | Battousai Nakamoto | Dark-Viper";
-    bool public paused = false;        
-    address public immutable deadAddress = 0x000000000000000000000000000000000000dEaD;  
+    bool public paused = false; 
+    address payable public developmentAddress;
+    address payable public bobbAddress;       
+    address public burnAddress;
+    uint256 public deadtax;
+    uint256 public bobbtax;
+    uint256 public devtax;
 
     modifier onlyGuard() {
         require(msg.sender == guard, "Not authorized.");
@@ -149,6 +154,12 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         _pay = pay;
     }
 
+    function setTax (uint256 _deadtax, uint256 _bobbtax, uint256 _devtax) external onlyOwner() {
+        deadtax = _deadtax;
+        bobbtax = _bobbtax;
+        devtax = _devtax;
+    }
+
     function updateRequiredAmount(uint256 _requiredAmount) external onlyOwner() {
         requiredAmount = _requiredAmount;
     }
@@ -160,12 +171,17 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     function burn(uint256 _burnAmount, uint256 _num) internal {
         uint256 num = _num - 10;
         uint256 burnAmount = (_burnAmount * num)/100 ;
-        uint256 tax =  (_burnAmount)/10;
+
+        uint256 tax1 =  (burnAmount * deadtax)/100;
+        uint256 tax2 =  (burnAmount * bobbtax)/100;
+        uint256 tax3 =  (burnAmount * devtax)/100;
+
         TokenInfo storage tokens = AllowedCrypto[_pid];
         IERC20 paytoken;
         paytoken = tokens.paytoken;               
-        paytoken.transfer(deadAddress, burnAmount); 
-        paytoken.transfer(developmentAddress, tax); 
+        paytoken.transfer(burnAddress, tax1);               
+        paytoken.transfer(bobbAddress, tax2); 
+        paytoken.transfer(developmentAddress, tax3); 
         TotalContractBurns += burnAmount;       
     }
 
@@ -256,7 +272,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         cost = requiredAmount;
         //Transfer Required Tokens to Weaponize NFT
         transferTokens(cost); 
-         //Initiate a 10% toll from the contract
+         //Initiate a 10% burn from the contract
         burn(cost, 10);
         // increment the function call counter
         functionCalls[attackerId]++;
@@ -419,11 +435,10 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         paytoken.transfer(msg.sender, _amount);
     }
 
-    address payable public developmentAddress;
-
-    function setDevelopmentAddress(address payable _developmentAddress) public onlyOwner {
-        require(msg.sender == owner(), "Not Owner.");
-        developmentAddress = _developmentAddress;
+    function setAddresses(address _developmentAddress, address _bobbAddress, address _burnAddress) public onlyOwner {
+        developmentAddress = payable (_developmentAddress);
+        bobbAddress = payable (_bobbAddress);
+        burnAddress = _burnAddress;
     }
 
     event PayoutsClaimed(address indexed _player, uint256 indexed _amount);
@@ -435,18 +450,14 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(players[_playerId].wins >= 5, "Fight more");
         require(msg.sender == ownerOf(_playerId), "Not your NFT");
         // Calculate the payout amount
-        uint256 totalAmount = (players[_playerId].payout * divisor);
-        uint256 fee = totalAmount / 50;
-        uint256 payoutAmount = totalAmount - fee;
+        uint256 payoutAmount = (players[_playerId].payout * divisor);
         TokenInfo storage tokens = AllowedCrypto[_pid];
         IERC20 paytoken;
         paytoken = tokens.paytoken; 
         //Check the contract for adequate withdrawal balance
-        require(paytoken.balanceOf(address(this)) > totalAmount, "Not Enough Reserves");      
+        require(paytoken.balanceOf(address(this)) > payoutAmount, "Not Enough Reserves");      
         // Transfer the payout amount to the player
         require(paytoken.transfer(msg.sender, payoutAmount), "Transfer Failed");
-        // Platform fee
-        require(paytoken.transfer(developmentAddress, fee), "Transfer Failed");
         // Reset the payout, wins and fight fields
         players[_playerId].payout = 0;
         players[_playerId].wins = 0;
