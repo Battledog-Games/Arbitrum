@@ -92,11 +92,16 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 timestamp;        
     }
 
+    struct BlackList {
+        bool blacklist;       
+    }
+
     //Arrays
     TokenInfo[] public AllowedCrypto;
 
     // Mapping
     mapping (uint256 => Player) public players;
+    mapping (uint256 => BlackList) public blacklisted;
     mapping (uint256 => uint256) public functionCalls;
     mapping (uint256 => uint256) private lastReset;
     mapping (uint256 => mapping (uint256 => uint256)) public fightTimestamps;
@@ -124,6 +129,13 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         // Mint a new ERC721 token for the player
         uint256 tokenId = COUNTER;
         _mint(msg.sender, tokenId);
+
+        //Create Blacklist and map it
+        blacklisted[COUNTER] = BlackList({
+            blacklist: false
+
+        });
+        
         emit TokenMinted(_name, tokenId);
         COUNTER++;
     }
@@ -204,7 +216,8 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     function activateNFT (uint256 _tokenId) public payable nonReentrant {
         require(!paused, "Paused Contract");
-        require(_tokenId > 0 && _tokenId <= totalSupply(), "Not Found");        
+        require(_tokenId > 0 && _tokenId <= totalSupply(), "Not Found");
+        require(!blacklisted[_tokenId].blacklist, "Blacklisted"); 
         uint256 cost;
         if(players[_tokenId].activate > 0) {
             require(players[_tokenId].wins >= 5, "Insufficient wins!");   
@@ -231,6 +244,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(players[_tokenId].activate > 0, "Activate NFT");
         require(msg.sender == ownerOf(_tokenId), "Not your NFT");
         require(_tokenId > 0 && _tokenId <= totalSupply(), "Not Found");
+        require(!blacklisted[_tokenId].blacklist, "Blacklisted"); 
         uint256 cost;
         cost = requiredAmount;        
         //Transfer Required Tokens to Weaponize NFT
@@ -245,7 +259,8 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(!paused, "Paused Contract");
         require(msg.sender == ownerOf(_tokenId), "Not your NFT");
         require(_tokenId > 0 && _tokenId <= totalSupply(), "Not Found");
-        require(players[_tokenId].activate > 0, "Activate NFT");        
+        require(players[_tokenId].activate > 0, "Activate NFT");      
+        require(!blacklisted[_tokenId].blacklist, "Blacklisted");   
         uint256 cost;
         cost = requiredAmount;
         //Transfer Required Tokens to Weaponize NFT
@@ -268,6 +283,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(block.timestamp - fightTimestamps[attackerId][defenderId] >= 24 hours, "Too soon.");
         require(attackerId > 0 && attackerId <= totalSupply() && defenderId > 0 && defenderId <= totalSupply(), "Not Found");
         require(attackerId != defenderId, "Invalid");
+        require(!blacklisted[attackerId].blacklist, "Blacklisted"); 
         uint256 cost;
         cost = requiredAmount;
         //Transfer Required Tokens to Weaponize NFT
@@ -305,6 +321,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(!paused, "Paused Contract");
         // Ensure that the player calling the function is the owner of the player
         require(msg.sender == ownerOf(_playerId), "Not your NFT");
+        require(!blacklisted[_playerId].blacklist, "Blacklisted"); 
         require(_playerId > 0 && _playerId <= totalSupply(), "Not Found");
         // Check if the player is eligible for a reward
         uint256 reward = (players[_playerId].attack - 100) / 100;
@@ -325,6 +342,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     function Debilitate(uint256 attackerId, uint256 defenderId) public payable nonReentrant {
         require(!paused, "Paused Contract");
         require(msg.sender == ownerOf(attackerId), "Not your NFT"); 
+        require(!blacklisted[attackerId].blacklist, "Blacklisted"); 
         require(players[attackerId].activate > 0, "Activate NFT");       
         require(players[attackerId].defence > 0, "No defence");
         require(players[defenderId].defence > 0, "Impotent enemy");
@@ -370,6 +388,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(!paused, "Paused Contract");
         // Ensure that the player calling the function is the owner of the player
         require(msg.sender == ownerOf(_playerId), "Not your NFT");
+        require(!blacklisted[_playerId].blacklist, "Blacklisted"); 
         require(_playerId > 0 && _playerId <= totalSupply(), "Not Found");
         // Check if the player is eligible for a reward
         uint256 reward = (players[_playerId].defence - 100) / 100;
@@ -393,6 +412,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(!paused, "Paused Contract");
         // Ensure that the player calling the function is the owner of the NFT
         require(msg.sender == ownerOf(_playerId), "Not Your NFT");
+        require(!blacklisted[_playerId].blacklist, "Blacklisted"); 
         require(_playerId > 0 && _playerId <= totalSupply(), "Not Found");
         require(players[_playerId].wins >= 5, "Insufficient wins");
         //Charge cost in GAME
@@ -410,6 +430,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     function resetFunctionCalls(uint256 _playerId) public nonReentrant {
         require(!paused, "Paused Contract");
         require(msg.sender == ownerOf(_playerId), "Not your NFT");
+        require(!blacklisted[_playerId].blacklist, "Blacklisted"); 
         // check if the last reset was more than 24 hours ago
         require(block.timestamp - lastReset[_playerId] >= 24 hours, "Too soon.");
         // reset the function calls counter
@@ -449,6 +470,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(players[_playerId].payout > 0, "No payout");
         require(players[_playerId].wins >= 5, "Fight more");
         require(msg.sender == ownerOf(_playerId), "Not your NFT");
+        require(!blacklisted[_playerId].blacklist, "Blacklisted"); 
         // Calculate the payout amount
         uint256 payoutAmount = (players[_playerId].payout * divisor);
         TokenInfo storage tokens = AllowedCrypto[_pid];
@@ -579,7 +601,6 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         return result;
     }
 
-
     // Timer for the voting
     uint256 public votingTimer;
 
@@ -594,8 +615,8 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     string public VotePassed;
 
     // Proof of Game function
-    function  ProofOfGame(bytes32 vote, uint256 tokenId) public onlyOwner {
-        require(vote == bytes32("YES") || vote == bytes32("NO"), "Invalid.");
+    function ProofOfGame(uint256 vote, uint256 tokenId) public onlyOwner {
+        require(vote == 0 || vote == 1, "Invalid.");
         require(tokenTimestamp[tokenId] == 0, "Duplicate");
         require(block.timestamp >= votingTimer, "Not Required.");
 
@@ -603,7 +624,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
 
         uint256 totalVotes = nft.level + nft.fights + nft.wins + nft.activate + nft.history + (nft.attack / 100) + (nft.defence / 100);
         
-        if (vote == bytes32("YES")) {
+        if (vote > 0) {
             YAYVotes += totalVotes;
         } else {
             NAYVotes += totalVotes;
