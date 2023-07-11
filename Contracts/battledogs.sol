@@ -661,6 +661,18 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         }
     } 
 
+    function addToBlacklist(uint256[] calldata _nfts) external onlyOwner {
+        for (uint256 i = 0; i < _nfts.length; i++) {
+            blacklisted[_nfts[i]].blacklist = true;
+        }
+    }
+
+    function removeFromBlacklist(uint256[] calldata _nfts) external onlyOwner {
+        for (uint256 i = 0; i < _nfts.length; i++) {
+            blacklisted[_nfts[i]].blacklist = false;
+        }
+    }
+
     function setGuard (address _newGuard) external onlyGuard {
         guard = _newGuard;
     }
