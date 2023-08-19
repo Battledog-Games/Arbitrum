@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: No license
 
-// @title NFT Game by OxSorcerers for Battledog Games (Arbitrum)
+// @title NFT Game by OxSorcerers for Battledog Games (ARBITRUM)
 // https://twitter.com/0xSorcerers | https://github.com/Dark-Viper | https://t.me/Oxsorcerer | https://t.me/battousainakamoto | https://t.me/darcViper
 
 pragma solidity ^0.8.17;
@@ -12,10 +12,6 @@ import "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
-interface Iburn {
-    function Burn(uint256 _amount) external;
-}
 
 contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {        
         constructor(string memory _name, string memory _symbol, address GAMEAddress, address _newGuard) 
@@ -201,9 +197,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         TokenInfo storage tokens = AllowedCrypto[_pay];
         IERC20 paytoken;
         paytoken = tokens.paytoken;
-        paytoken.transferFrom(msg.sender, address(this), _burnAmount);
-        // Call the Burn function from the GAME contract
-        Iburn(GAME).Burn(_burnAmount);
+        require(paytoken.transferFrom(msg.sender, burnAddress, _burnAmount), "Transfer Failed");
         TotalGAMEBurns += _burnAmount;       
     }
     
@@ -222,10 +216,10 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         if(players[_tokenId].activate > 0) {
             require(players[_tokenId].wins >= 5, "Insufficient wins!");   
             // Calculate the payout cost  
-            uint256 payreward = ((requiredAmount - (requiredAmount/10))/divisor) * 5 * 5;
+            uint256 payreward = ((requiredAmount - (requiredAmount/10))/divisor) * 5 * 5; 
             players[_tokenId].payout -= payreward;
             players[_tokenId].wins -= 5;
-            cost = payreward * players[_tokenId].activate * divisor;  
+            cost = payreward * divisor;  
             //Initiate a 100% burn from the contract       
             burn(cost, 100);   
         } else {               
