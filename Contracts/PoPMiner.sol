@@ -23,6 +23,7 @@ interface IBattledog {
 
     function getPlayers() external view returns (Player[] memory);
     function getPlayerOwners(address _user) external returns (Player[] memory);
+    function blacklisted(uint256 _index) external view returns (bool);
 }
 
 /**
@@ -44,7 +45,7 @@ contract ProofOfPlay is Ownable, ReentrancyGuard {
     uint256 public historybonus = 1;
         
 
-    // Declare the ActiveMiners array
+    // Declare the ActiveMiners & Blacklist arrays
     uint256 public activeMinersLength;
 
     mapping(uint256 => IBattledog.Player) public ActiveMiners;
@@ -115,13 +116,14 @@ contract ProofOfPlay is Ownable, ReentrancyGuard {
         //Require Contract isn't paused
         require(!paused, "Paused Contract");
         //Require Token Ownership    
-        require(getOwnerData(_tokenId), "Not Owner!");
+        require(getOwnerData(_tokenId), "Not Owner!");        
         //Require Miner hasn't claimed within 24hrs
         require(MinerClaims[_tokenId] + timeLock < block.timestamp, "Timelocked.");
-
+        //Require Miner is not on blacklist
+        require(!IBattledog(battledogs).blacklisted(_tokenId), "NFT Blacklisted");       
 
     // if statement may work here 
-     if (ActiveMiners[_tokenId].activate > 1) {
+     if (ActiveMiners[_tokenId].activate > 0) {
             //Reorg ActiveMiners array
         IBattledog.Player[] memory players = IBattledog(battledogs).getPlayers();
                 activeMinersLength = players.length;
@@ -152,7 +154,7 @@ contract ProofOfPlay is Ownable, ReentrancyGuard {
         //emit event
         emit RewardClaimedByMiner(msg.sender, rewards);
      } else {
-        require(ActiveMiners[_tokenId].attack > 10, "ActivateUp Required");
+        require(ActiveMiners[_tokenId].activate > 0, "ActivateUp Required");
      }
  
     }
