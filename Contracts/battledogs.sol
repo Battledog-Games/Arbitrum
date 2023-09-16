@@ -177,8 +177,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     }
 
     function burn(uint256 _burnAmount, uint256 _num) internal {
-        uint256 num = _num - 10;
-        uint256 burnAmount = (_burnAmount * num)/100 ;
+        uint256 burnAmount = (_burnAmount * _num)/100 ;
 
         uint256 tax1 =  (burnAmount * deadtax)/100;
         uint256 tax2 =  (burnAmount * bobbtax)/100;
@@ -210,6 +209,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     function activateNFT (uint256 _tokenId) public payable nonReentrant {
         require(!paused, "Paused Contract");
+        require(msg.sender == ownerOf(_tokenId), "Not your NFT");
         require(_tokenId > 0 && _tokenId <= totalSupply(), "Not Found");
         require(!blacklisted[_tokenId].blacklist, "Blacklisted"); 
         uint256 cost;
@@ -273,7 +273,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(players[attackerId].activate > 0 && players[defenderId].activate > 0, "Activate NFT.");
         require(players[attackerId].attack > 0, "No attack.");
         require(players[defenderId].attack > 0, "Impotent enemy.");
-        require(functionCalls[attackerId] < 1000, "Limit reached.");
+        require(functionCalls[attackerId] < 1001, "Limit reached.");
         require(block.timestamp - fightTimestamps[attackerId][defenderId] >= 24 hours, "Too soon.");
         require(attackerId > 0 && attackerId <= totalSupply() && defenderId > 0 && defenderId <= totalSupply(), "Not Found");
         require(attackerId != defenderId, "Invalid");
@@ -340,7 +340,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(players[attackerId].activate > 0 && players[defenderId].activate > 0, "Activate NFT.");
         require(players[attackerId].defence > 0, "No defence");
         require(players[defenderId].defence > 0, "Impotent enemy");
-        require(functionCalls[attackerId] < 1000, "Limit reached.");
+        require(functionCalls[attackerId] < 1001, "Limit reached.");
         // check if the last debilitation was more than 24 hours ago
         require(block.timestamp - fightTimestamps[attackerId][defenderId] >= 24 hours, "Too soon.");
         require(attackerId > 0 && attackerId <= totalSupply() && defenderId > 0 && defenderId <= totalSupply(), "Not Found");
@@ -508,7 +508,6 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     event Pause();
     function pause() public onlyGuard {
-        require(msg.sender == owner(), "Only Deployer.");
         require(!paused, "Contract already paused.");
         paused = true;
         emit Pause();
@@ -516,7 +515,6 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     event Unpause();
     function unpause() public onlyGuard {
-        require(msg.sender == owner(), "Only Deployer.");
         require(paused, "Contract not paused.");
         paused = false;
         emit Unpause();
