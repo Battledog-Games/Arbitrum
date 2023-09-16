@@ -232,7 +232,6 @@ contract Harvester is Ownable, ReentrancyGuard {
 
     event Pause();
     function pause() public onlyGuard {
-        require(msg.sender == owner(), "Only Deployer.");
         require(!paused, "Contract already paused.");
         paused = true;
         emit Pause();
@@ -240,7 +239,6 @@ contract Harvester is Ownable, ReentrancyGuard {
 
     event Unpause();
     function unpause() public onlyGuard {
-        require(msg.sender == owner(), "Only Deployer.");
         require(paused, "Contract not paused.");
         paused = false;
         emit Unpause();
