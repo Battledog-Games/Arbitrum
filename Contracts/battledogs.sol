@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: No license
 
-// @title NFT Game by OxSorcerers for Battledog Games (ARBITRUM)
+// @title NFT Game by OxSorcerers for Battledog Games (ARBITRUM NOVA)
 // https://twitter.com/0xSorcerers | https://github.com/Dark-Viper | https://t.me/Oxsorcerer | https://t.me/battousainakamoto | https://t.me/darcViper
 
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "abdk-libraries-solidity/ABDKMath64x64.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+interface Iburn {
+    function Burn(uint256 _amount) external;
+}
 
 contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {        
         constructor(string memory _name, string memory _symbol, address GAMEAddress, address _newGuard) 
@@ -33,19 +29,23 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     uint256 private divisor = 1 * 10**6;
     uint256 public TotalContractBurns = 0;
     uint256 public TotalGAMEBurns = 0;    
-    uint256 BattlesTotal = 0; 
+    uint256 public BattlesTotal = 0; 
     using Strings for uint256;
     string public baseURI;
     address private guard; 
     address public GAME;
-    string public Author = "0xSorcerer";
+    string public Author = "0xSorcerer | Battousai Nakamoto | Dark-Viper";
     bool public paused = false; 
     address payable public developmentAddress;
     address payable public bobbAddress;       
     address public burnAddress;
     uint256 public deadtax;
     uint256 public bobbtax;
-    uint256 public devtax;
+    uint256 public devtax;    
+    uint256 public gametax;   
+    uint256 public activatetax;
+    uint256 public sos;
+
 
     modifier onlyGuard() {
         require(msg.sender == guard, "Not authorized.");
@@ -162,10 +162,13 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         _pay = pay;
     }
 
-    function setTax (uint256 _deadtax, uint256 _bobbtax, uint256 _devtax) external onlyOwner() {
+    function setTax (uint256 _deadtax, uint256 _bobbtax, uint256 _devtax, uint256 _gametax, uint256 _sos, uint256 _activatetax) external onlyOwner() {
         deadtax = _deadtax;
         bobbtax = _bobbtax;
         devtax = _devtax;
+        gametax = _gametax;
+        sos = _sos;
+        activatetax = _activatetax;
     }
 
     function updateRequiredAmount(uint256 _requiredAmount) external onlyOwner() {
@@ -196,7 +199,9 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         TokenInfo storage tokens = AllowedCrypto[_pay];
         IERC20 paytoken;
         paytoken = tokens.paytoken;
-        require(paytoken.transferFrom(msg.sender, burnAddress, _burnAmount), "Transfer Failed");
+        paytoken.transferFrom(msg.sender, address(this), _burnAmount);
+        // Call the Burn function from the GAME contract
+        Iburn(GAME).Burn(_burnAmount);
         TotalGAMEBurns += _burnAmount;       
     }
     
@@ -216,12 +221,12 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         if(players[_tokenId].activate > 0) {
             require(players[_tokenId].wins >= 5, "Insufficient wins!");   
             // Calculate the payout cost  
-            uint256 payreward = ((requiredAmount - (requiredAmount/10))/divisor) * 5 * 5; 
+            uint256 payreward = ((requiredAmount - (requiredAmount/gametax))/divisor) * 5 * 5; 
             players[_tokenId].payout -= payreward;
             players[_tokenId].wins -= 5;
             cost = payreward * divisor;  
             //Initiate a 100% burn from the contract       
-            burn(cost, 100);   
+            burn(cost, activatetax);   
         } else {               
             cost = activatingAmount;   
             //Transfer Required Tokens to Activate NFT        
@@ -246,7 +251,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         //Initiate a 50% burn from the contract
         burn(cost, 50);
         // Weaponize NFT
-        players[_tokenId].attack += 20;
+        players[_tokenId].attack += sos;
     } 
 
     function regenerate (uint256 _tokenId) public payable nonReentrant {
@@ -262,7 +267,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         //Initiate a 50% burn from the contract
         burn(cost, 50);
         // Regenerate NFT
-        players[_tokenId].defence += 20;
+        players[_tokenId].defence += sos;
     } 
 
     event AssaultEvent(uint256 indexed attackerId, uint256 indexed defenderId, uint256 stolenPoints, uint256 indexed timestamp);
@@ -305,7 +310,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         emit AssaultEvent(attackerId, defenderId, stolenPoints, block.timestamp);
         players[attackerId].fights++;
         players[attackerId].history++;
-        players[attackerId].payout += ((requiredAmount - (requiredAmount/10))/divisor);
+        players[attackerId].payout += ((requiredAmount - (requiredAmount/gametax))/divisor);
         addAssaulter(attackerId, defenderId, stolenPoints);
     }
 
@@ -325,7 +330,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         players[_playerId].attack = players[_playerId].attack - (reward * 100);
         //calculate payout        
         uint256 winmultiplier = 5;
-        uint256 payreward = ((requiredAmount - (requiredAmount/10))/divisor) * reward * winmultiplier;
+        uint256 payreward = ((requiredAmount - (requiredAmount/gametax))/divisor) * reward * winmultiplier;
         players[_playerId].payout += payreward;
         // Emit event for payout 
         emit AssaultPayoutClaimed(_playerId, payreward);
@@ -337,7 +342,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(!paused, "Paused Contract");
         require(msg.sender == ownerOf(attackerId), "Not your NFT"); 
         require(!blacklisted[attackerId].blacklist, "Blacklisted"); 
-        require(players[attackerId].activate > 0 && players[defenderId].activate > 0, "Activate NFT.");
+        require(players[attackerId].activate > 0 && players[defenderId].activate > 0, "Activate NFT");       
         require(players[attackerId].defence > 0, "No defence");
         require(players[defenderId].defence > 0, "Impotent enemy");
         require(functionCalls[attackerId] < 1001, "Limit reached.");
@@ -372,7 +377,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         emit DebilitateEvent(attackerId, defenderId, stolenPoints, block.timestamp);
         players[attackerId].fights++;
         players[attackerId].history++;
-        players[attackerId].payout += ((requiredAmount - (requiredAmount/10))/divisor);
+        players[attackerId].payout += ((requiredAmount - (requiredAmount/gametax))/divisor);
         addDebilitator(attackerId, defenderId, stolenPoints);
     }
 
@@ -392,7 +397,7 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
         players[_playerId].defence = players[_playerId].defence - (reward * 100);
         //calculate payout        
         uint256 winmultiplier = 5;
-        uint256 payreward = ((requiredAmount - (requiredAmount/10))/divisor) * reward * winmultiplier;
+        uint256 payreward = ((requiredAmount - (requiredAmount/gametax))/divisor) * reward * winmultiplier;
         players[_playerId].payout += payreward;
         // Emit event for payout 
         emit DebilitatePayoutClaimed(_playerId, payreward);
@@ -608,4 +613,4 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     function setGuard (address _newGuard) external onlyGuard {
         guard = _newGuard;
     }
-}
+}                 
