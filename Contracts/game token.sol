@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-// @title AiGAME token for Arbdoge Fun Games
+// @title GAME token Battledog GAMES
 // https://twitter.com/0xSorcerers | https://github.com/Dark-Viper | https://t.me/Oxsorcerer | https://t.me/battousainakamoto | https://t.me/darcViper
 
 pragma solidity ^0.8.17;
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "abdk-libraries-solidity/ABDKMath64x64.sol";
-import "./ERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract AIGAME is ERC20, Ownable, ReentrancyGuard {        
+contract GAME is ERC20, Ownable, ReentrancyGuard {        
         constructor(string memory _name, string memory _symbol, address _newGuard, address _devWallet, address _lpWallet, address _deadWallet) 
             ERC20(_name, _symbol)
         {
@@ -17,8 +13,6 @@ contract AIGAME is ERC20, Ownable, ReentrancyGuard {
         devWallet = _devWallet;
         lpWallet = _lpWallet;
         deadWallet = _deadWallet;
-        _mint(msg.sender, MAX_SUPPLY);  
-
         }
     using ABDKMath64x64 for uint256;
     using SafeMath for uint256;
@@ -39,6 +33,15 @@ contract AIGAME is ERC20, Ownable, ReentrancyGuard {
         require(msg.sender == burnercontract, "Not authorized.");
         _;
     }
+  
+    event mintEvent(uint256 indexed _amount);
+    function Mint(uint256 _amount) external onlyOwner {                
+      require(!paused, "Paused Contract");  
+      uint256 amount = _amount * 10 ** decimals();         
+      require((amount + totalSupply()) <= MAX_SUPPLY, "Max Mint Exceeded");
+        _mint(msg.sender, amount); 
+       emit mintEvent(_amount);
+    }
 
     event burnEvent(uint256 indexed _amount);
     function Burn(uint256 _amount) external onlyBurner {                
@@ -49,7 +52,8 @@ contract AIGAME is ERC20, Ownable, ReentrancyGuard {
     }
 
     function Burner(uint256 _amount) external onlyOwner {                
-        require(!paused, "Paused Contract");
+        require(!paused, "Paused Contract");                
+        require(msg.sender == guard, "Not Authorized");
        _burn(msg.sender, _amount);
        TotalBurns += _amount;
        emit burnEvent(_amount);
@@ -64,7 +68,7 @@ contract AIGAME is ERC20, Ownable, ReentrancyGuard {
 
     event Unpause();
     function unpause() public onlyGuard {
-        require(msg.sender == owner(), "Only Deployer.");
+        require(msg.sender == owner(), "Not Authorized.");
         require(paused, "Contract not paused.");
         paused = false;
         emit Unpause();
@@ -86,4 +90,4 @@ contract AIGAME is ERC20, Ownable, ReentrancyGuard {
     function setGuard (address _newGuard) external onlyGuard {
         guard = _newGuard;
     }
-}
+}              
