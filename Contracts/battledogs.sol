@@ -526,29 +526,36 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     } 
 
     // Getters
-  function getPlayers() public view returns  (Player[] memory) {
-        uint256 counter = 0;
-        uint256 total = totalSupply();
-        Player[] memory result = new Player[](total);    
-        for (uint256 i = 0; i < total; i++) {
-                result[counter] = players[i];
-                counter++;
-        }
-        return result;
+    function getPlayers(uint256 _tokenId) public view returns (Player[] memory) {
+        Player[] memory playerBoard = new Player[](1);
+        playerBoard[0] = players[_tokenId];
+        return playerBoard;
     }
 
-  function getPlayerOwners(address _player) public view returns (Player[] memory) {
-        Player[] memory result = new Player[](balanceOf(_player));
+    function getPlayerOwners(address _player) public view returns (Player[] memory) {
+        uint256 total = balanceOf(_player);
+        Player[] memory result = new Player[](total);
         uint256 counter = 0;        
-        uint256 total = totalSupply();
         for (uint256 i = 0; i < total; i++) {
-            if (ownerOf(i) == _player) {
-                result[counter] = players[i];
+          uint256 tokenId = tokenOfOwnerByIndex(_player, i);
+                result[tokenId] = players[tokenId];
                 counter++;
-            }
         }
         return result;
     } 
+
+    // function getPlayerOwners(address _player) public view returns (Player[] memory) {
+    //     Player[] memory result = new Player[](balanceOf(_player));
+    //     uint256 counter = 0;        
+    //     uint256 total = totalSupply();
+    //     for (uint256 i = 0; i < total; i++) {
+    //         if (ownerOf(i) == _player) {
+    //             result[counter] = players[i];
+    //             counter++;
+    //         }
+    //     }
+    //     return result;
+    // } 
     
     function addAssaulter(uint256 attackerId, uint256 defenderId, uint256 stolenPoints) internal {
         Assaulter memory assaulter = Assaulter({
@@ -613,4 +620,4 @@ contract battledog is ERC721Enumerable, Ownable, ReentrancyGuard {
     function setGuard (address _newGuard) external onlyGuard {
         guard = _newGuard;
     }
-}                 
+}
